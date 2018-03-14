@@ -93,7 +93,7 @@ class Canteen {
       this.notes = parser.parseCanteenNotes(this.notes);
 
     } else {
-      //TODO: throw server connection error exception
+      //TODO: throw sderver connection error exception
     }
     return this;
   }
