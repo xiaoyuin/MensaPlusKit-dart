@@ -1,7 +1,7 @@
 name: mensapluskit
 description: A small dart library to access the latest menus of all student canteens in Dresden.
 version: 0.0.1
-#homepage: https://www.example.com
+homepage: https://github.com/xiaoyuin/MensaPlusKit-dart
 author: Xiaoyu Yin <yinxiaoyu39999@gmail.com>
 
 environment:
@@ -13,6 +13,7 @@ dependencies:
   intl: "^0.15.2"
   uuid: "^0.5.3"
   html: any
+
 
 dev_dependencies:
   test: ^0.12.0

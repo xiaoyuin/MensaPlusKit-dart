@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:intl/date_symbol_data_local.dart';
+import 'exceptions.dart';
 import 'parser.dart';
 import 'utils.dart';
 
 class Canteen {
-
   String name = "";
   String fullName = "";
   String address = "";
@@ -27,7 +27,7 @@ class Canteen {
   num mId = -1;
 
   Canteen.fromJson(Map json) {
-    assert(json!=null);
+    assert(json != null);
 
     this.name = json["name"];
     this.fullName = json["fullName"];
@@ -42,7 +42,7 @@ class Canteen {
     this.urlMealsW1 = json["urlMealsW1"];
     this.urlMealsW2 = json["urlMealsW2"];
     this.notes = JSON.decode(json["notes"] ?? "{}");
-    this. coordinates = json["coordinates"];
+    this.coordinates = json["coordinates"];
 
     this.mId = json["mId"] ?? -1;
   }
@@ -55,8 +55,7 @@ class Canteen {
     var url = urls[TimeUtils.getWeekIndexRelativeToToday(dateTime)];
 
     if (url == null) {
-      // TODO: throw Canteen has no menu error
-      return null;
+      throw new NoURLException();
     }
 
     await initializeDateFormatting("de_DE");
@@ -64,11 +63,11 @@ class Canteen {
     var response = await http.get(url);
 
     if (response.statusCode == 200) {
-
-      var parser = new CanteenParser(this.name, response.bodyBytes, url, date: dateTime, mId: this.mId);
+      var parser = new CanteenParser(this.name, response.bodyBytes, url,
+          date: dateTime, mId: this.mId);
       return parser.parseMenu();
     } else {
-      //TODO: throw server connection error exception
+      throw new SWDDServerException();
     }
 
     return null;
@@ -78,26 +77,58 @@ class Canteen {
     var url = this.urlDetail;
 
     if (url == null) {
-      // TODO: throw Canteen has no detail url error
-      return this;
+      throw new NoURLException();
     }
 
     var response = await http.get(url);
 
     if (response.statusCode == 200) {
-
-      var parser = new CanteenParser(this.name, response.bodyBytes, url, mId: this.mId);
+      var parser =
+          new CanteenParser(this.name, response.bodyBytes, url, mId: this.mId);
 
       this.urlLogo = parser.parseCanteenUrlLogo() ?? this.urlLogo;
 
-      this.notes = parser.parseCanteenNotes(this.notes);
-
+      this.notes = parser.parseCanteenIntroduction(this.notes);
     } else {
-      //TODO: throw sderver connection error exception
+      throw new SWDDServerException();
     }
     return this;
   }
 
+  Future<Canteen> getOpeningTimes() async {
+    var url = this.urlOpenTimes;
+
+    if (url == null) {
+      throw new NoURLException();
+    }
+
+    var response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      var parser =
+          new CanteenParser(this.name, response.bodyBytes, url, mId: this.mId);
+
+      this.notes = parser.parseCanteenOpeningTimes(this.notes);
+    } else {
+      throw new SWDDServerException();
+    }
+    return this;
+  }
+
+  bool hasMenu() {
+    return urlMeals != null && urlMeals.isNotEmpty;
+  }
+
+  @override
+  bool operator ==(other) {
+    if (other is Canteen) {
+      return other.name == this.name;
+    }
+    return false;
+  }
+
+  @override
+  int get hashCode => this.name.hashCode;
 }
 
 /// One day's menu of a canteen
@@ -109,7 +140,6 @@ class Menu {
   List<MenuItem> items = [];
 
   Menu(this.canteenName, this.date);
-
 }
 
 /// An item in a menu
@@ -135,7 +165,6 @@ class MenuItem {
 ///
 /// for a meal, the text equals to the meal name
 class Meal extends MenuItem {
-
   /// the name of this meal
   String name = "";
 
@@ -152,7 +181,6 @@ class Meal extends MenuItem {
   List urlImages = new List();
 
   Future<Meal> getMealDetail() async {
-
     var url = urlDetail;
     if (url == null || url.isEmpty) {
       return this;
@@ -161,29 +189,23 @@ class Meal extends MenuItem {
     var response = await http.get(url);
 
     if (response.statusCode == 200) {
-
       var parser = new MealParser(this.canteenName, response.bodyBytes, url);
 
-      this.urlPicture = parser.parseMealUrlPicture();
+      if (this.urlPicture == null) {
+        this.urlPicture = parser.parseMealUrlPicture();
+      }
       this.slot = parser.parseMealSlot();
       this.notes = parser.parseMealNotes();
 
-      if (this.urlPicture != null && this.urlThumbnail == null) {
-        this.urlThumbnail = this.urlPicture;
-      }
-
+      this.urlThumbnail ??= this.urlPicture;
+      this.urlPicture ??= this.urlThumbnail;
     } else {
-      //TODO: throw server connection error exception
+      throw new SWDDServerException();
     }
 
     return this;
   }
-
 }
 
 /// An info item
-class Info extends MenuItem {
-
-
-
-}
+class Info extends MenuItem {}

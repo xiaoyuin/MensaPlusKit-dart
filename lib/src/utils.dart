@@ -1,4 +1,5 @@
 import 'package:path/path.dart' as path;
+import 'dart:collection';
 
 class TimeUtils {
   static int getWeekIndexRelativeToToday(DateTime dateTime) {
@@ -23,11 +24,31 @@ class PathUtils {
   static String getAbsUrl(String base_url, String rel_url) {
     assert(base_url!=null);
     assert(rel_url!=null);
-    if (path.isAbsolute(rel_url)) {
-      return rel_url;
-    } else {
-      return path.normalize(path.join(base_url, rel_url));
+    if (rel_url.startsWith("//")) {
+      return "https:" + rel_url;
     }
+    var stack = base_url.split("/");
+    var parts = rel_url.split("/");
+
+    stack.removeLast();
+
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i] == ".") {
+        continue;
+      }
+      if (parts[i] == "..") {
+        stack.removeLast();
+      } else {
+        stack.add(parts[i]);
+      }
+    }
+    return stack.join("/");
+
+//    if (path.isAbsolute(rel_url)) {
+//      return rel_url;
+//    } else {
+//      return path.normalize(path.join(base_url, rel_url));
+//    }
   }
 
 }
