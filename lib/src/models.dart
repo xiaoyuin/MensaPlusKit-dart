@@ -166,19 +166,21 @@ class MenuItem {
 /// for a meal, the text equals to the meal name
 class Meal extends MenuItem {
   /// the name of this meal
-  String name = "";
+  String name;
 
   /// so far no use, is "food" normally for a meal
-  String category = "";
-  String slot = "";
-  String urlDetail = "";
-  String urlPicture = "";
-  String urlThumbnail = "";
+  String category;
+  String slot;
+  String urlDetail;
+  String urlPicture;
+  String urlThumbnail;
   Map notes = new Map();
-  String price = "";
+  String price;
 
   // New property since > 0.9.6
   List urlImages = new List();
+
+  int rate;
 
   Future<Meal> getMealDetail() async {
     var url = urlDetail;

@@ -7,5 +7,7 @@ pubspec.lock
 
 # Directory created by dartdoc
 doc/api/
-/.idea/
+
+.idea/
 ios
+.dart_tool
