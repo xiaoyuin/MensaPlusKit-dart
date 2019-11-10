@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'exceptions.dart';
 import 'parser.dart';
 import 'utils.dart';
+import 'rss.dart' as rss;
 
 class Canteen {
   String name = "";
@@ -41,16 +42,65 @@ class Canteen {
     this.urlMeals = json["urlMeals"];
     this.urlMealsW1 = json["urlMealsW1"];
     this.urlMealsW2 = json["urlMealsW2"];
-    this.notes = JSON.decode(json["notes"] ?? "{}");
+    this.notes = jsonDecode(json["notes"] ?? "{}");
     this.coordinates = json["coordinates"];
 
     this.mId = json["mId"] ?? -1;
+  }
+
+  Future<Menu> fetchMenuFromRSS({bool tomorrow}) async {
+    if (mId == -1) {
+      return null;
+    }
+    var date = DateTime.now();
+    var url =
+        "https://www.studentenwerk-dresden.de/feeds/speiseplan.rss?mid=$mId";
+    if (tomorrow != null && tomorrow) {
+      url = url + "&tag=morgen";
+      date = date.add(Duration(days: 1));
+    }
+
+    await initializeDateFormatting("de_DE");
+
+    var response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      var channel = rss.Parser.parse(response.bodyBytes);
+      var items = channel.items;
+
+      var menu = Menu(this.name, date);
+      menu.items = items.map((it) {
+        var meal = Meal();
+        meal.canteenName = this.name;
+        meal.category = "food";
+        meal.date = date;
+        meal.id = it.guid;
+        var extracts = extractFromTitle(it.title);
+        meal.name = meal.text = extracts[0];
+        if (extracts.length > 1) {
+          meal.price = extracts[1];
+        }
+        meal.urlDetail = it.guid;
+        meal.urlPicture = urlDetail2urlPicture(it.guid, this.mId, date);
+        return meal;
+      }).toList();
+      return menu;
+    } else {
+      throw new SWDDServerException();
+    }
   }
 
   /// Asynchronously get meals on some date
   ///
   /// return a list of meals or empty list
   Future<Menu> getMenu(DateTime dateTime) async {
+    if (TimeUtils.isToday(dateTime)) {
+      return fetchMenuFromRSS();
+    } else if (TimeUtils.isTomorrow(dateTime)) {
+      return fetchMenuFromRSS(tomorrow: true);
+    } else {
+      return null;
+    }
     var urls = [this.urlMeals, this.urlMealsW1, this.urlMealsW2];
     var url = urls[TimeUtils.getWeekIndexRelativeToToday(dateTime)];
 
@@ -69,8 +119,6 @@ class Canteen {
     } else {
       throw new SWDDServerException();
     }
-
-    return null;
   }
 
   Future<Canteen> getDetail() async {
